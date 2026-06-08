@@ -8,6 +8,8 @@ The purpose of this port is performance comparison against the original managed
 implementation. It is not a hand-written rewrite; the C# version remains the
 reference implementation.
 
+<img src="./media/screenshot0.png" alt="screenshot" width="400"/>
+
 ## Projects
 
 This repository contains three main projects:
