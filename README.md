@@ -77,19 +77,19 @@ static floor.
 
 | Implementation | Build | Threads reported | Wall avg | FPS | DebugTimings avg | Relative to C# |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| C# | Release | 28 | 4.168 ms | 240 | 4.165 ms | 1.00x |
-| C++ | `-O2` | 28 | 4.751 ms | 210 | 4.744 ms | 0.88x |
-| C++ | `-O3` | 28 | 4.727 ms | 212 | 4.720 ms | 0.88x |
-| C++ | `-O3 -march=native` | 28 | 4.396 ms | 227 | 4.389 ms | 0.95x |
+| C# | Release | 28 | 4.185 ms | 239 | 4.183 ms | 1.00x |
+| C++ | `-O2` | 28 | 4.757 ms | 210 | 4.749 ms | 0.88x |
+| C++ | `-O3` | 28 | 4.673 ms | 214 | 4.667 ms | 0.90x |
+| C++ | `-O3 -march=native` | 28 | 4.324 ms | 231 | 4.317 ms | 0.97x |
 
 #### Single-Threaded
 
 | Implementation | Build | Wall avg | FPS | DebugTimings avg | Relative to C# |
 | --- | --- | ---: | ---: | ---: | ---: |
-| C# | Release | 46.003 ms | 22 | 45.999 ms | 1.00x |
-| C++ | `-O2` | 54.245 ms | 18 | 54.244 ms | 0.85x |
-| C++ | `-O3` | 54.917 ms | 18 | 54.916 ms | 0.84x |
-| C++ | `-O3 -march=native` | 47.330 ms | 21 | 47.329 ms | 0.97x |
+| C# | Release | 46.321 ms | 22 | 46.316 ms | 1.00x |
+| C++ | `-O2` | 55.068 ms | 18 | 55.067 ms | 0.84x |
+| C++ | `-O3` | 55.975 ms | 18 | 55.974 ms | 0.83x |
+| C++ | `-O3 -march=native` | 47.026 ms | 21 | 47.025 ms | 0.99x |
 
 ### Rotating Cube
 
@@ -100,19 +100,19 @@ one kinematic compound cube body.
 
 | Implementation | Build | Threads reported | Wall avg | FPS | DebugTimings avg | Relative to C# |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| C# | Release | 28 | 5.430 ms | 184 | 5.427 ms | 1.00x |
-| C++ | `-O2` | 28 | 4.720 ms | 212 | 4.713 ms | 1.15x |
-| C++ | `-O3` | 28 | 4.739 ms | 211 | 4.732 ms | 1.15x |
-| C++ | `-O3 -march=native` | 28 | 4.650 ms | 215 | 4.643 ms | 1.17x |
+| C# | Release | 28 | 5.105 ms | 196 | 5.103 ms | 1.00x |
+| C++ | `-O2` | 28 | 4.772 ms | 210 | 4.765 ms | 1.07x |
+| C++ | `-O3` | 28 | 4.590 ms | 218 | 4.583 ms | 1.11x |
+| C++ | `-O3 -march=native` | 28 | 4.576 ms | 219 | 4.568 ms | 1.12x |
 
 #### Single-Threaded
 
 | Implementation | Build | Wall avg | FPS | DebugTimings avg | Relative to C# |
 | --- | --- | ---: | ---: | ---: | ---: |
-| C# | Release | 32.386 ms | 31 | 32.382 ms | 1.00x |
-| C++ | `-O2` | 43.161 ms | 23 | 43.160 ms | 0.75x |
-| C++ | `-O3` | 42.218 ms | 24 | 42.217 ms | 0.77x |
-| C++ | `-O3 -march=native` | 37.843 ms | 26 | 37.842 ms | 0.86x |
+| C# | Release | 32.804 ms | 30 | 32.800 ms | 1.00x |
+| C++ | `-O2` | 42.609 ms | 23 | 42.608 ms | 0.77x |
+| C++ | `-O3` | 42.299 ms | 24 | 42.298 ms | 0.78x |
+| C++ | `-O3 -march=native` | 37.002 ms | 27 | 37.001 ms | 0.89x |
 
 ## License
 

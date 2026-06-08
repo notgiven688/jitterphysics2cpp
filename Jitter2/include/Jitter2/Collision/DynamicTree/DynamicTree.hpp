@@ -1509,8 +1509,8 @@ public:
                     continue;
                 }
 
-                Proxy* first = nodes_[static_cast<std::size_t>(pair.ID1)].Entity;
-                Proxy* second = nodes_[static_cast<std::size_t>(pair.ID2)].Entity;
+                Proxy* first = nodes_[static_cast<std::size_t>(pair.ID1())].Entity;
+                Proxy* second = nodes_[static_cast<std::size_t>(pair.ID2())].Entity;
                 if (first == nullptr || second == nullptr)
                 {
                     continue;
@@ -1613,30 +1613,36 @@ private:
             // Combined 64-bit identifier for the pair.
             std::uint64_t ID = 0;
 
-            // The smaller of the two IDs.
-            int ID1 = 0;
-
-            // The larger of the two IDs.
-            int ID2 = 0;
-
             Pair() = default;
 
             // Creates a pair from two IDs, storing them in canonical order.
             Pair(int id1, int id2)
             {
+                int first = 0;
+                int second = 0;
                 if (id1 < id2)
                 {
-                    ID1 = id1;
-                    ID2 = id2;
+                    first = id1;
+                    second = id2;
                 }
                 else
                 {
-                    ID1 = id2;
-                    ID2 = id1;
+                    first = id2;
+                    second = id1;
                 }
 
-                ID = static_cast<std::uint64_t>(static_cast<std::uint32_t>(ID1))
-                    | (static_cast<std::uint64_t>(static_cast<std::uint32_t>(ID2)) << 32U);
+                ID = static_cast<std::uint64_t>(static_cast<std::uint32_t>(first))
+                    | (static_cast<std::uint64_t>(static_cast<std::uint32_t>(second)) << 32U);
+            }
+
+            [[nodiscard]] int ID1() const
+            {
+                return static_cast<int>(static_cast<std::uint32_t>(ID));
+            }
+
+            [[nodiscard]] int ID2() const
+            {
+                return static_cast<int>(static_cast<std::uint32_t>(ID >> 32U));
             }
 
             [[nodiscard]] std::size_t GetHash() const
@@ -1650,6 +1656,9 @@ private:
                 return static_cast<std::size_t>(hash);
             }
         };
+
+        static_assert(sizeof(Pair) == sizeof(std::uint64_t));
+        static_assert(alignof(Pair) == alignof(std::uint64_t));
 
         // Minimum number of slots in the hash set.
         static constexpr std::size_t MinimumSize = 16384;
@@ -1756,8 +1765,6 @@ private:
                         continue;
                     }
 
-                    slots_[hashIndex].ID1 = pair.ID1;
-                    slots_[hashIndex].ID2 = pair.ID2;
                     count = count_.fetch_add(1, std::memory_order_acq_rel) + 1;
                     break;
                 }
@@ -2106,9 +2113,9 @@ private:
                 continue;
             }
 
-            if (PairHasLiveEntities(pair.ID1, pair.ID2)
-                && PairExpandedBoxesOverlap(pair.ID1, pair.ID2)
-                && PairHasActiveProxy(pair.ID1, pair.ID2))
+            if (PairHasLiveEntities(pair.ID1(), pair.ID2())
+                && PairExpandedBoxesOverlap(pair.ID1(), pair.ID2())
+                && PairHasActiveProxy(pair.ID1(), pair.ID2()))
             {
                 continue;
             }
