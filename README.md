@@ -77,19 +77,19 @@ static floor.
 
 | Implementation | Build | Threads reported | Wall avg | FPS | DebugTimings avg | Relative to C# |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| C# | Release | 28 | 3.832 ms | 261 | 3.830 ms | 1.00x |
-| C++ | `-O2` | 28 | 4.489 ms | 223 | 4.482 ms | 0.85x |
-| C++ | `-O3` | 28 | 4.465 ms | 224 | 4.458 ms | 0.86x |
-| C++ | `-O3 -march=native` | 28 | 4.139 ms | 242 | 4.133 ms | 0.93x |
+| C# | Release | 28 | 4.168 ms | 240 | 4.165 ms | 1.00x |
+| C++ | `-O2` | 28 | 4.751 ms | 210 | 4.744 ms | 0.88x |
+| C++ | `-O3` | 28 | 4.727 ms | 212 | 4.720 ms | 0.88x |
+| C++ | `-O3 -march=native` | 28 | 4.396 ms | 227 | 4.389 ms | 0.95x |
 
 #### Single-Threaded
 
 | Implementation | Build | Wall avg | FPS | DebugTimings avg | Relative to C# |
 | --- | --- | ---: | ---: | ---: | ---: |
-| C# | Release | 40.363 ms | 25 | 40.360 ms | 1.00x |
-| C++ | `-O2` | 45.044 ms | 22 | 45.044 ms | 0.90x |
-| C++ | `-O3` | 44.437 ms | 23 | 44.436 ms | 0.91x |
-| C++ | `-O3 -march=native` | 39.498 ms | 25 | 39.498 ms | 1.02x |
+| C# | Release | 46.003 ms | 22 | 45.999 ms | 1.00x |
+| C++ | `-O2` | 54.245 ms | 18 | 54.244 ms | 0.85x |
+| C++ | `-O3` | 54.917 ms | 18 | 54.916 ms | 0.84x |
+| C++ | `-O3 -march=native` | 47.330 ms | 21 | 47.329 ms | 0.97x |
 
 ### Rotating Cube
 
@@ -100,28 +100,19 @@ one kinematic compound cube body.
 
 | Implementation | Build | Threads reported | Wall avg | FPS | DebugTimings avg | Relative to C# |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| C# | Release | 28 | 4.870 ms | 205 | 4.868 ms | 1.00x |
-| C++ | `-O2` | 28 | 4.855 ms | 206 | 4.847 ms | 1.00x |
-| C++ | `-O3` | 28 | 4.754 ms | 210 | 4.747 ms | 1.02x |
-| C++ | `-O3 -march=native` | 28 | 4.763 ms | 210 | 4.756 ms | 1.02x |
+| C# | Release | 28 | 5.430 ms | 184 | 5.427 ms | 1.00x |
+| C++ | `-O2` | 28 | 4.720 ms | 212 | 4.713 ms | 1.15x |
+| C++ | `-O3` | 28 | 4.739 ms | 211 | 4.732 ms | 1.15x |
+| C++ | `-O3 -march=native` | 28 | 4.650 ms | 215 | 4.643 ms | 1.17x |
 
 #### Single-Threaded
 
 | Implementation | Build | Wall avg | FPS | DebugTimings avg | Relative to C# |
 | --- | --- | ---: | ---: | ---: | ---: |
-| C# | Release | 26.051 ms | 38 | 26.050 ms | 1.00x |
-| C++ | `-O2` | 31.972 ms | 31 | 31.971 ms | 0.81x |
-| C++ | `-O3` | 31.351 ms | 32 | 31.351 ms | 0.83x |
-| C++ | `-O3 -march=native` | 29.013 ms | 34 | 29.013 ms | 0.90x |
-
-In these runs, C# and C++ are close in the multithreaded cases. The rotating
-cube scene is effectively tied when multithreaded; colosseum favors C# slightly
-unless native CPU tuning is enabled. Single-threaded C++ catches up in the
-colosseum scene with `-march=native`; rotating cube remains faster in C#.
-
-Additional useful comparisons would be double precision, fixed worker counts,
-C++ LTO/IPO, Clang builds, C# ReadyToRun/PGO, and longer repeated runs with
-min/median/max instead of a single snapshot.
+| C# | Release | 32.386 ms | 31 | 32.382 ms | 1.00x |
+| C++ | `-O2` | 43.161 ms | 23 | 43.160 ms | 0.75x |
+| C++ | `-O3` | 42.218 ms | 24 | 42.217 ms | 0.77x |
+| C++ | `-O3 -march=native` | 37.843 ms | 26 | 37.842 ms | 0.86x |
 
 ## License
 

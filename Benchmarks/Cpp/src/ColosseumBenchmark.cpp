@@ -332,13 +332,21 @@ double SumDebugTimings(const Jitter2::World& world)
     return total;
 }
 
-void PrintTimingBuckets(const Jitter2::World& world)
+void AddTimingBuckets(const Jitter2::World& world, std::vector<double>& totals)
 {
     const std::span<const double> timings = world.DebugTimings();
     for (std::size_t index = 0; index < timings.size(); ++index)
     {
+        totals[index] += timings[index];
+    }
+}
+
+void PrintTimingBuckets(const std::vector<double>& totals, int frames)
+{
+    for (std::size_t index = 0; index < totals.size(); ++index)
+    {
         const auto timing = static_cast<Jitter2::World::Timings>(index);
-        std::printf("  %-18s %8.3f ms\n", Jitter2::World::TimingName(timing), timings[index]);
+        std::printf("  %-18s %8.3f ms\n", Jitter2::World::TimingName(timing), totals[index] / static_cast<double>(frames));
     }
 }
 
@@ -386,12 +394,14 @@ int main(int argc, char** argv)
 
     using Clock = std::chrono::steady_clock;
     double debugTotalMilliseconds = 0.0;
+    std::vector<double> timingBucketTotals(world.DebugTimings().size(), 0.0);
     const auto start = Clock::now();
     for (int index = 0; index < options.Frames; ++index)
     {
         UpdateRotatingCube(rotatingCube);
         world.Step(options.Timestep, options.Multithread);
         debugTotalMilliseconds += SumDebugTimings(world);
+        AddTimingBuckets(world, timingBucketTotals);
     }
     const auto end = Clock::now();
 
@@ -408,8 +418,8 @@ int main(int argc, char** argv)
         "DebugTimings avg: %.3f ms (%.0f fps)\n",
         averageDebugMilliseconds,
         averageDebugMilliseconds > 0.0 ? 1000.0 / averageDebugMilliseconds : 0.0);
-    std::printf("Last timing buckets:\n");
-    PrintTimingBuckets(world);
+    std::printf("Average timing buckets:\n");
+    PrintTimingBuckets(timingBucketTotals, options.Frames);
 
     return 0;
 }

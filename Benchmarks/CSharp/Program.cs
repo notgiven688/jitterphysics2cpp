@@ -35,12 +35,14 @@ for (int index = 0; index < options.WarmupFrames; index++)
 }
 
 double debugTotalMilliseconds = 0.0;
+double[] timingBucketTotals = new double[(int)World.Timings.Last];
 Stopwatch stopwatch = Stopwatch.StartNew();
 for (int index = 0; index < options.Frames; index++)
 {
     UpdateRotatingCube(rotatingCube);
     world.Step(options.Timestep, options.Multithread);
     debugTotalMilliseconds += SumDebugTimings(world);
+    AddTimingBuckets(world, timingBucketTotals);
 }
 stopwatch.Stop();
 
@@ -50,8 +52,8 @@ double debugAverageMilliseconds = debugTotalMilliseconds / options.Frames;
 Console.WriteLine($"Frames: {options.WarmupFrames} warmup + {options.Frames} measured");
 Console.WriteLine($"Wall avg: {wallAverageMilliseconds:0.000} ms ({(wallAverageMilliseconds > 0 ? 1000.0 / wallAverageMilliseconds : 0):0} fps)");
 Console.WriteLine($"DebugTimings avg: {debugAverageMilliseconds:0.000} ms ({(debugAverageMilliseconds > 0 ? 1000.0 / debugAverageMilliseconds : 0):0} fps)");
-Console.WriteLine("Last timing buckets:");
-PrintTimingBuckets(world);
+Console.WriteLine("Average timing buckets:");
+PrintTimingBuckets(timingBucketTotals, options.Frames);
 
 static void AddFloor(World world)
 {
@@ -200,11 +202,19 @@ static double SumDebugTimings(World world)
     return total;
 }
 
-static void PrintTimingBuckets(World world)
+static void AddTimingBuckets(World world, double[] totals)
 {
-    for (int index = 0; index < (int)World.Timings.Last; index++)
+    for (int index = 0; index < totals.Length; index++)
     {
-        Console.WriteLine($"  {((World.Timings)index),-18} {world.DebugTimings[index],8:0.000} ms");
+        totals[index] += world.DebugTimings[index];
+    }
+}
+
+static void PrintTimingBuckets(double[] totals, int frames)
+{
+    for (int index = 0; index < totals.Length; index++)
+    {
+        Console.WriteLine($"  {((World.Timings)index),-18} {totals[index] / frames,8:0.000} ms");
     }
 }
 

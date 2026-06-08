@@ -5,6 +5,7 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <limits>
@@ -12,7 +13,17 @@
 #include <queue>
 #include <span>
 #include <stdexcept>
+#include <type_traits>
+#include <utility>
 #include <vector>
+
+#if (!defined(JITTER_DOUBLE_PRECISION) || !JITTER_DOUBLE_PRECISION) \
+    && (defined(__SSE__) || defined(_M_IX86_FP) || defined(_M_X64))
+#define JITTER_TREEBOX_USE_SSE_FLOAT 1
+#include <immintrin.h>
+#else
+#define JITTER_TREEBOX_USE_SSE_FLOAT 0
+#endif
 
 #include <Jitter2/Collision/DynamicTree/IDynamicTreeProxy.hpp>
 #include <Jitter2/Collision/NarrowPhase/NarrowPhase.hpp>
@@ -34,7 +45,7 @@ namespace Jitter2::Collision
 
 // Represents an axis-aligned bounding box used for spatial partitioning in acceleration structures
 // such as DynamicTree.
-struct TreeBox
+struct alignas(sizeof(Real) * 4) TreeBox
 {
     // Small epsilon value used for ray-box intersection tests.
     static constexpr Real Epsilon = static_cast<Real>(1e-12);
@@ -42,22 +53,32 @@ struct TreeBox
     // The minimum corner of the bounding box.
     LinearMath::JVector Min = LinearMath::JVector::Zero();
 
+    // Padding for SIMD-friendly four-lane loads.
+    Real MinW = RealZero;
+
     // The maximum corner of the bounding box.
     LinearMath::JVector Max = LinearMath::JVector::Zero();
+
+    // Padding for SIMD-friendly four-lane loads.
+    Real MaxW = RealZero;
 
     TreeBox() = default;
 
     // Creates a new TreeBox from minimum and maximum corner vectors.
     TreeBox(const LinearMath::JVector& min, const LinearMath::JVector& max)
         : Min(min),
-          Max(max)
+          MinW(RealZero),
+          Max(max),
+          MaxW(RealZero)
     {
     }
 
     // Creates a new TreeBox from an existing JBoundingBox.
     explicit TreeBox(const LinearMath::JBoundingBox& box)
         : Min(box.Min),
-          Max(box.Max)
+          MinW(RealZero),
+          Max(box.Max),
+          MaxW(RealZero)
     {
     }
 
@@ -86,9 +107,19 @@ struct TreeBox
     // Determines whether this box completely encloses the specified box.
     [[nodiscard]] bool Contains(const TreeBox& box) const
     {
+#if JITTER_TREEBOX_USE_SSE_FLOAT
+        const __m128 outerMin = _mm_load_ps(&Min.X);
+        const __m128 innerMin = _mm_load_ps(&box.Min.X);
+        const __m128 outerMax = _mm_load_ps(&Max.X);
+        const __m128 innerMax = _mm_load_ps(&box.Max.X);
+        const __m128 leMin = _mm_cmple_ps(outerMin, innerMin);
+        const __m128 geMax = _mm_cmpge_ps(outerMax, innerMax);
+        return (_mm_movemask_ps(_mm_and_ps(leMin, geMax)) & 0x0F) == 0x0F;
+#else
         return Min.X <= box.Min.X && Max.X >= box.Max.X
             && Min.Y <= box.Min.Y && Max.Y >= box.Max.Y
             && Min.Z <= box.Min.Z && Max.Z >= box.Max.Z;
+#endif
     }
 
     // Gets the center point of the bounding box.
@@ -99,8 +130,14 @@ struct TreeBox
 
     [[nodiscard]] double GetSurfaceArea() const
     {
+#if JITTER_TREEBOX_USE_SSE_FLOAT
+        alignas(16) float extent[4];
+        _mm_store_ps(extent, _mm_sub_ps(_mm_load_ps(&Max.X), _mm_load_ps(&Min.X)));
+        return 2.0 * (extent[0] * extent[1] + extent[1] * extent[2] + extent[2] * extent[0]);
+#else
         const LinearMath::JVector len = Max - Min;
         return static_cast<double>(static_cast<Real>(2) * (len.X * len.Y + len.Y * len.Z + len.Z * len.X));
+#endif
     }
 
     // Checks if a ray intersects this bounding box.
@@ -115,16 +152,33 @@ struct TreeBox
     // Determines whether the two boxes are completely separated from each other.
     [[nodiscard]] static bool Disjoint(const TreeBox& left, const TreeBox& right)
     {
+#if JITTER_TREEBOX_USE_SSE_FLOAT
+        const __m128 leftMax = _mm_load_ps(&left.Max.X);
+        const __m128 rightMin = _mm_load_ps(&right.Min.X);
+        const __m128 leftMin = _mm_load_ps(&left.Min.X);
+        const __m128 rightMax = _mm_load_ps(&right.Max.X);
+        const __m128 ltMin = _mm_cmplt_ps(leftMax, rightMin);
+        const __m128 gtMax = _mm_cmpgt_ps(leftMin, rightMax);
+        return (_mm_movemask_ps(_mm_or_ps(ltMin, gtMax)) & 0x0F) != 0;
+#else
         return left.Max.X < right.Min.X || left.Min.X > right.Max.X
             || left.Max.Y < right.Min.Y || left.Min.Y > right.Max.Y
             || left.Max.Z < right.Min.Z || left.Min.Z > right.Max.Z;
+#endif
     }
 
     // Creates a bounding box that encloses both specified boxes.
     static void CreateMerged(const TreeBox& left, const TreeBox& right, TreeBox& result)
     {
+#if JITTER_TREEBOX_USE_SSE_FLOAT
+        _mm_store_ps(&result.Min.X, _mm_min_ps(_mm_load_ps(&left.Min.X), _mm_load_ps(&right.Min.X)));
+        _mm_store_ps(&result.Max.X, _mm_max_ps(_mm_load_ps(&left.Max.X), _mm_load_ps(&right.Max.X)));
+#else
         result.Min = LinearMath::JVector::Min(left.Min, right.Min);
+        result.MinW = RealZero;
         result.Max = LinearMath::JVector::Max(left.Max, right.Max);
+        result.MaxW = RealZero;
+#endif
     }
 
     // Creates a bounding box that encloses both specified boxes.
@@ -137,14 +191,34 @@ struct TreeBox
 
     [[nodiscard]] static double MergedSurface(const TreeBox& left, const TreeBox& right)
     {
+#if JITTER_TREEBOX_USE_SSE_FLOAT
+        alignas(16) float extent[4];
+        const __m128 min = _mm_min_ps(_mm_load_ps(&left.Min.X), _mm_load_ps(&right.Min.X));
+        const __m128 max = _mm_max_ps(_mm_load_ps(&left.Max.X), _mm_load_ps(&right.Max.X));
+        _mm_store_ps(extent, _mm_sub_ps(max, min));
+        return 2.0 * (extent[0] * extent[1] + extent[0] * extent[2] + extent[1] * extent[2]);
+#else
         return CreateMerged(left, right).GetSurfaceArea();
+#endif
     }
 
     bool operator==(const TreeBox& other) const
     {
+#if JITTER_TREEBOX_USE_SSE_FLOAT
+        const __m128 eqMin = _mm_cmpeq_ps(_mm_load_ps(&Min.X), _mm_load_ps(&other.Min.X));
+        const __m128 eqMax = _mm_cmpeq_ps(_mm_load_ps(&Max.X), _mm_load_ps(&other.Max.X));
+        return (_mm_movemask_ps(_mm_and_ps(eqMin, eqMax)) & 0x0F) == 0x0F;
+#else
         return Min == other.Min && Max == other.Max;
+#endif
     }
 };
+
+static_assert(std::is_standard_layout_v<TreeBox>);
+static_assert(offsetof(TreeBox, Min) == 0);
+static_assert(offsetof(TreeBox, MinW) == 3 * sizeof(Real));
+static_assert(offsetof(TreeBox, Max) == 4 * sizeof(Real));
+static_assert(offsetof(TreeBox, MaxW) == 7 * sizeof(Real));
 
 // Represents a dynamic AABB tree for broadphase collision detection.
 // Uses a bounding volume hierarchy with Surface Area Heuristic (SAH) for O(log n)
@@ -1491,11 +1565,12 @@ private:
         return proxies_.Contains(proxy);
     }
 
+    template<typename Action>
     static void ExecuteBatches(
         bool multiThread,
         int count,
         int taskThreshold,
-        const std::function<void(Parallelization::Batch)>& action)
+        Action&& action)
     {
         if (count <= 0)
         {
@@ -1516,7 +1591,11 @@ private:
         int numTasks = count / threshold + 1;
         numTasks = std::min(numTasks, Parallelization::ThreadPool::Instance().ThreadCount());
 
-        Parallelization::ForBatch(0, count, numTasks, action);
+        Parallelization::ForBatch(
+            0,
+            count,
+            numTasks,
+            std::function<void(Parallelization::Batch)>(std::forward<Action>(action)));
     }
 
     // A hash set implementation which stores unordered pairs of int values.
@@ -1641,6 +1720,17 @@ private:
         {
             const std::size_t hash = pair.GetHash();
             std::size_t count = 0;
+
+            Pair* snapshotData = slotsData_.load(std::memory_order_acquire);
+            const std::size_t snapshotSize = slotsSize_.load(std::memory_order_acquire);
+            if (snapshotData != nullptr && snapshotSize != 0)
+            {
+                const std::size_t fastPathIndex = FindSlotAtomic(snapshotData, snapshotSize, hash, pair.ID);
+                if (AtomicLoadID(snapshotData[fastPathIndex]) == pair.ID)
+                {
+                    return false;
+                }
+            }
 
             {
                 ReadLockScope lock(rwLock_);
@@ -1802,7 +1892,15 @@ private:
                 }
             }
 
+            if (!slots_.empty())
+            {
+                // Lock-free fast-path readers may still hold a snapshot of this storage.
+                retiredSlots_.push_back(std::move(slots_));
+            }
+
             slots_ = std::move(newSlots);
+            slotsData_.store(slots_.data(), std::memory_order_release);
+            slotsSize_.store(slots_.size(), std::memory_order_release);
         }
 
         static std::size_t FindSlot(const std::vector<Pair>& slots, std::size_t hash, std::uint64_t id)
@@ -1829,7 +1927,12 @@ private:
 
         static std::size_t FindSlotAtomic(const std::vector<Pair>& slots, std::size_t hash, std::uint64_t id)
         {
-            const std::size_t modder = slots.size() - 1;
+            return FindSlotAtomic(slots.data(), slots.size(), hash, id);
+        }
+
+        static std::size_t FindSlotAtomic(const Pair* slots, std::size_t slotCount, std::size_t hash, std::uint64_t id)
+        {
+            const std::size_t modder = slotCount - 1;
             hash &= modder;
 
             while (true)
@@ -1845,6 +1948,9 @@ private:
         }
 
         std::vector<Pair> slots_;
+        std::vector<std::vector<Pair>> retiredSlots_;
+        std::atomic<Pair*> slotsData_ {nullptr};
+        std::atomic<std::size_t> slotsSize_ {0};
         std::atomic<std::size_t> count_ {0};
         Parallelization::ReaderWriterLock rwLock_;
     };
