@@ -31,6 +31,7 @@
 #include <Jitter2/Collision/Shapes/Shape.hpp>
 #include <Jitter2/Collision/Shapes/ShapeHelper.hpp>
 #include <Jitter2/DataStructures/PartitionedSet.hpp>
+#include <Jitter2/DataStructures/SlimBag.hpp>
 #include <Jitter2/Dynamics/RigidBody.hpp>
 #include <Jitter2/LinearMath/JBoundingBox.hpp>
 #include <Jitter2/LinearMath/JQuaternion.hpp>
@@ -391,7 +392,7 @@ public:
         nodes_.reserve(InitialSize);
         freeNodes_.clear();
         potentialPairs_.Clear();
-        movedProxies_.clear();
+        movedProxies_.Clear();
         root_ = NullNode;
         updatedProxyCount_ = 0;
     }
@@ -456,7 +457,7 @@ public:
         Tracer::ProfileEnd(TraceName::PruneInvalidPairs);
         setTime(Timings::PruneInvalidPairs);
 
-        movedProxies_.clear();
+        movedProxies_.Clear();
 
         const int proxyCount = static_cast<int>(proxies_.ActiveCount());
         Tracer::ProfileBegin(TraceName::UpdateBoundingBoxes);
@@ -474,11 +475,9 @@ public:
         Tracer::ProfileEnd(TraceName::UpdateBoundingBoxes);
         setTime(Timings::UpdateBoundingBoxes);
 
-        std::mutex movedMutex;
         Tracer::ProfileBegin(TraceName::ScanMoved);
-        ExecuteBatches(multiThread, proxyCount, 24, [this, &movedMutex](Parallelization::Batch batch)
+        ExecuteBatches(multiThread, proxyCount, 24, [this](Parallelization::Batch batch)
         {
-            std::vector<Proxy*> localMoved;
             for (int i = batch.Start; i < batch.End; ++i)
             {
                 Proxy& proxy = proxies_[static_cast<std::size_t>(i)];
@@ -486,39 +485,35 @@ public:
                 if (node.ForceUpdate || !node.ExpandedBox.Contains(proxy.WorldBoundingBox()))
                 {
                     node.ForceUpdate = false;
-                    localMoved.push_back(&proxy);
+                    movedProxies_.ConcurrentAdd(&proxy);
                 }
-            }
-
-            if (!localMoved.empty())
-            {
-                std::lock_guard lock(movedMutex);
-                movedProxies_.insert(movedProxies_.end(), localMoved.begin(), localMoved.end());
             }
         });
         Tracer::ProfileEnd(TraceName::ScanMoved);
         setTime(Timings::ScanMoved);
 
-        updatedProxyCount_ = movedProxies_.size();
+        updatedProxyCount_ = movedProxies_.Count();
         Tracer::ProfileBegin(TraceName::UpdateProxies);
-        for (Proxy* proxy : movedProxies_)
+        for (int i = 0; i < movedProxies_.Count(); ++i)
         {
-            InternalAddRemoveProxy(*proxy, dt);
+            InternalAddRemoveProxy(*movedProxies_[i], dt);
         }
         Tracer::ProfileEnd(TraceName::UpdateProxies);
         setTime(Timings::UpdateProxies);
 
-        const int movedCount = static_cast<int>(movedProxies_.size());
+        const int movedCount = movedProxies_.Count();
         Tracer::ProfileBegin(TraceName::ScanOverlaps);
         ExecuteBatches(multiThread, movedCount, 24, [this](Parallelization::Batch batch)
         {
             for (int i = batch.Start; i < batch.End; ++i)
             {
-                OverlapCheckAdd(root_, movedProxies_[static_cast<std::size_t>(i)]->NodePtr());
+                OverlapCheckAdd(root_, movedProxies_[i]->NodePtr());
             }
         });
         Tracer::ProfileEnd(TraceName::ScanOverlaps);
         setTime(Timings::ScanOverlaps);
+
+        movedProxies_.TrackAndNullOutOne();
     }
 
     void Optimize(int sweeps = 100, Real chance = static_cast<Real>(0.01), bool incremental = false)
@@ -2756,7 +2751,7 @@ private:
     std::vector<Node> nodes_;
     std::vector<int> freeNodes_;
     DataStructures::PartitionedSet<Proxy> proxies_;
-    std::vector<Proxy*> movedProxies_;
+    DataStructures::SlimBag<Proxy*> movedProxies_;
     std::vector<Proxy*> tempList_;
     PairHashSet potentialPairs_;
     FilterFunction filter_;

@@ -56,8 +56,9 @@ cmake --build build-double -j
 
 ## Benchmarks
 
-Local snapshot, single precision, two demo-derived scenes,
-`--warmup 120 --frames 300`, default `dt = 0.01`.
+Local snapshot, single precision, two demo-derived scenes, default `dt = 0.01`.
+Each entry is the median of 3 runs using `--warmup 300 --frames 1000`; values
+in parentheses show min-max.
 
 Environment:
 
@@ -77,19 +78,19 @@ static floor.
 
 | Implementation | Build | Threads reported | Wall avg | FPS | DebugTimings avg | Relative to C# |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| C# | Release | 28 | 4.185 ms | 239 | 4.183 ms | 1.00x |
-| C++ | `-O2` | 28 | 4.757 ms | 210 | 4.749 ms | 0.88x |
-| C++ | `-O3` | 28 | 4.673 ms | 214 | 4.667 ms | 0.90x |
-| C++ | `-O3 -march=native` | 28 | 4.324 ms | 231 | 4.317 ms | 0.97x |
+| C# | Release | 28 | 3.846 ms (3.775-3.928) | 260 | 3.845 ms (3.774-3.926) | 1.00x |
+| C++ | `-O2` | 28 | 4.462 ms (4.439-4.524) | 224 | 4.455 ms (4.431-4.517) | 0.86x |
+| C++ | `-O3` | 28 | 4.419 ms (4.407-4.444) | 226 | 4.411 ms (4.399-4.436) | 0.87x |
+| C++ | `-O3 -march=native` | 28 | 4.096 ms (4.017-4.138) | 244 | 4.089 ms (4.009-4.130) | 0.94x |
 
 #### Single-Threaded
 
 | Implementation | Build | Wall avg | FPS | DebugTimings avg | Relative to C# |
 | --- | --- | ---: | ---: | ---: | ---: |
-| C# | Release | 46.321 ms | 22 | 46.316 ms | 1.00x |
-| C++ | `-O2` | 55.068 ms | 18 | 55.067 ms | 0.84x |
-| C++ | `-O3` | 55.975 ms | 18 | 55.974 ms | 0.83x |
-| C++ | `-O3 -march=native` | 47.026 ms | 21 | 47.025 ms | 0.99x |
+| C# | Release | 46.706 ms (45.642-46.867) | 21 | 46.703 ms (45.640-46.864) | 1.00x |
+| C++ | `-O2` | 54.680 ms (54.479-55.037) | 18 | 54.679 ms (54.478-55.036) | 0.85x |
+| C++ | `-O3` | 54.222 ms (54.067-54.604) | 18 | 54.221 ms (54.066-54.604) | 0.86x |
+| C++ | `-O3 -march=native` | 47.701 ms (47.434-48.115) | 21 | 47.701 ms (47.433-48.115) | 0.98x |
 
 ### Rotating Cube
 
@@ -100,19 +101,19 @@ one kinematic compound cube body.
 
 | Implementation | Build | Threads reported | Wall avg | FPS | DebugTimings avg | Relative to C# |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| C# | Release | 28 | 5.105 ms | 196 | 5.103 ms | 1.00x |
-| C++ | `-O2` | 28 | 4.772 ms | 210 | 4.765 ms | 1.07x |
-| C++ | `-O3` | 28 | 4.590 ms | 218 | 4.583 ms | 1.11x |
-| C++ | `-O3 -march=native` | 28 | 4.576 ms | 219 | 4.568 ms | 1.12x |
+| C# | Release | 28 | 5.820 ms (5.702-6.073) | 172 | 5.819 ms (5.701-6.071) | 1.00x |
+| C++ | `-O2` | 28 | 6.320 ms (6.317-6.435) | 158 | 6.312 ms (6.309-6.427) | 0.92x |
+| C++ | `-O3` | 28 | 6.402 ms (6.322-6.405) | 156 | 6.394 ms (6.314-6.397) | 0.91x |
+| C++ | `-O3 -march=native` | 28 | 6.225 ms (6.135-6.370) | 161 | 6.217 ms (6.127-6.362) | 0.94x |
 
 #### Single-Threaded
 
 | Implementation | Build | Wall avg | FPS | DebugTimings avg | Relative to C# |
 | --- | --- | ---: | ---: | ---: | ---: |
-| C# | Release | 32.804 ms | 30 | 32.800 ms | 1.00x |
-| C++ | `-O2` | 42.609 ms | 23 | 42.608 ms | 0.77x |
-| C++ | `-O3` | 42.299 ms | 24 | 42.298 ms | 0.78x |
-| C++ | `-O3 -march=native` | 37.002 ms | 27 | 37.001 ms | 0.89x |
+| C# | Release | 51.930 ms (50.430-52.053) | 19 | 51.927 ms (50.428-52.051) | 1.00x |
+| C++ | `-O2` | 75.449 ms (73.929-75.551) | 13 | 75.448 ms (73.928-75.550) | 0.69x |
+| C++ | `-O3` | 70.847 ms (70.762-75.992) | 14 | 70.846 ms (70.761-75.992) | 0.73x |
+| C++ | `-O3 -march=native` | 66.435 ms (66.364-68.108) | 15 | 66.435 ms (66.364-68.107) | 0.78x |
 
 ## License
 

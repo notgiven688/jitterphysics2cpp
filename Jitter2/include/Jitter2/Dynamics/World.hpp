@@ -539,20 +539,23 @@ private:
     void UpdateActiveBodies(Real stepDt, Real substepDt, bool multithread);
     void IntegrateForces(bool multithread);
     void IntegrateVelocities(Real substepDt, bool multithread);
+    template<typename Action>
     void ExecuteBodyBatches(
         bool multithread,
         int taskThreshold,
-        const std::function<void(Parallelization::Batch)>& action);
+        Action&& action);
+    template<typename Action>
     void ExecuteContactBatches(
         bool multithread,
         int taskThreshold,
-        const std::function<void(Parallelization::Batch)>& action,
+        Action&& action,
         bool execute = true);
+    template<typename Action>
     void ExecuteConstraintBatches(
         bool multithread,
         int taskThreshold,
         int count,
-        const std::function<void(Parallelization::Batch)>& action,
+        Action&& action,
         bool execute = true);
     void PrepareConstraints(Parallelization::Batch batch, Real inverseDt);
     void IterateConstraints(Parallelization::Batch batch, Real inverseDt);
@@ -646,6 +649,102 @@ private:
 
     friend class RigidBody;
 };
+
+template<typename Action>
+void World::ExecuteBodyBatches(bool multithread, int taskThreshold, Action&& action)
+{
+    const int count = static_cast<int>(bodiesSet_.ActiveCount());
+    if (count == 0)
+    {
+        return;
+    }
+
+#if !JITTER_ENABLE_MULTITHREADING
+    multithread = false;
+#endif
+
+    if (!multithread)
+    {
+        action(Parallelization::Batch {0, count});
+        return;
+    }
+
+    const int threshold = std::max(1, taskThreshold);
+    int numTasks = count / threshold + 1;
+    numTasks = std::min(numTasks, Parallelization::ThreadPool::Instance().ThreadCount());
+
+    Parallelization::ForBatch(
+        0,
+        count,
+        numTasks,
+        std::function<void(Parallelization::Batch)>(std::forward<Action>(action)));
+}
+
+template<typename Action>
+void World::ExecuteContactBatches(bool multithread, int taskThreshold, Action&& action, bool execute)
+{
+    const int count = static_cast<int>(contactData_.ActiveCount());
+    if (count == 0)
+    {
+        return;
+    }
+
+#if !JITTER_ENABLE_MULTITHREADING
+    multithread = false;
+#endif
+
+    if (!multithread)
+    {
+        action(Parallelization::Batch {0, count});
+        return;
+    }
+
+    const int threshold = std::max(1, taskThreshold);
+    int numTasks = count / threshold + 1;
+    numTasks = std::min(numTasks, Parallelization::ThreadPool::Instance().ThreadCount());
+
+    Parallelization::ForBatch(
+        0,
+        count,
+        numTasks,
+        std::function<void(Parallelization::Batch)>(std::forward<Action>(action)),
+        execute);
+}
+
+template<typename Action>
+void World::ExecuteConstraintBatches(
+    bool multithread,
+    int taskThreshold,
+    int count,
+    Action&& action,
+    bool execute)
+{
+    if (count == 0)
+    {
+        return;
+    }
+
+#if !JITTER_ENABLE_MULTITHREADING
+    multithread = false;
+#endif
+
+    if (!multithread)
+    {
+        action(Parallelization::Batch {0, count});
+        return;
+    }
+
+    const int threshold = std::max(1, taskThreshold);
+    int numTasks = count / threshold + 1;
+    numTasks = std::min(numTasks, Parallelization::ThreadPool::Instance().ThreadCount());
+
+    Parallelization::ForBatch(
+        0,
+        count,
+        numTasks,
+        std::function<void(Parallelization::Batch)>(std::forward<Action>(action)),
+        execute);
+}
 
 template<typename TConstraint>
 TConstraint& World::CreateConstraint(RigidBody& body1, RigidBody& body2)
